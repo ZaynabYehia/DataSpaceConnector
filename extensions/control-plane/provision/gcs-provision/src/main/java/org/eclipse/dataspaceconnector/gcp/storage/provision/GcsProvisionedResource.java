@@ -22,11 +22,7 @@ import org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema;
 import org.eclipse.dataspaceconnector.spi.types.domain.DataAddress;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.ProvisionedDataDestinationResource;
 
-import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.BUCKET_NAME;
-import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.LOCATION;
-import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.SERVICE_ACCOUNT_EMAIL;
-import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.SERVICE_ACCOUNT_NAME;
-import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.STORAGE_CLASS;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.*;
 
 @JsonDeserialize(builder = GcsProvisionedResource.Builder.class)
 @JsonTypeName("dataspaceconnector:gcsgrovisionedresource")
@@ -35,14 +31,13 @@ public class GcsProvisionedResource extends ProvisionedDataDestinationResource {
     private GcsProvisionedResource() {
     }
 
-    public String getBucketName() {
-        return getDataAddress().getProperty(BUCKET_NAME);
-    }
-
     public String getLocation() {
         return getDataAddress().getProperty(LOCATION);
     }
 
+    public String getProjectId() {
+        return getDataAddress().getProperty(PROJECT_ID);
+    }
     public String getStorageClass() {
         return getDataAddress().getProperty(STORAGE_CLASS);
     }
@@ -78,6 +73,11 @@ public class GcsProvisionedResource extends ProvisionedDataDestinationResource {
 
         public GcsProvisionedResource.Builder location(String location) {
             this.dataAddressBuilder.property(LOCATION, location);
+            return this;
+        }
+
+        public GcsProvisionedResource.Builder projectId(String projectId) {
+            this.dataAddressBuilder.property(PROJECT_ID, projectId);
             return this;
         }
 

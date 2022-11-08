@@ -14,15 +14,17 @@
 
 package org.eclipse.dataspaceconnector.gcp.storage.provision;
 
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpAccessToken;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpException;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpServiceAccount;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcsBucket;
+import org.eclipse.dataspaceconnector.gcp.core.common.*;
 import org.eclipse.dataspaceconnector.gcp.core.iam.IamService;
+import org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema;
 import org.eclipse.dataspaceconnector.gcp.core.storage.StorageService;
 import org.eclipse.dataspaceconnector.policy.model.Policy;
 import org.eclipse.dataspaceconnector.spi.monitor.Monitor;
 import org.eclipse.dataspaceconnector.spi.response.ResponseStatus;
+import org.eclipse.dataspaceconnector.spi.security.Vault;
+import org.eclipse.dataspaceconnector.spi.types.TypeManager;
+import org.eclipse.dataspaceconnector.spi.types.domain.DataAddress;
+import org.eclipse.dataspaceconnector.spi.types.domain.transfer.TransferProcess;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
@@ -53,7 +55,8 @@ class GcsProvisionerTest {
         storageServiceMock = mock(StorageService.class);
         iamServiceMock = mock(IamService.class);
         testPolicy = Policy.Builder.newInstance().build();
-        provisioner = new GcsProvisioner(mock(Monitor.class), storageServiceMock, iamServiceMock);
+        var gcpCredential= new GcpCredential(mock(Vault.class), mock(TypeManager.class), mock(Monitor.class) );
+        provisioner = new GcsProvisioner(mock(Monitor.class), gcpCredential);
     }
 
     @Test
@@ -67,11 +70,12 @@ class GcsProvisionerTest {
     @Test
     void provisionSuccess() {
         var resourceDefinitionId = "id";
+        var projectId = "projectId1";
         var location = "location";
         var storageClass = "storage-class";
         var transferProcessId = UUID.randomUUID().toString();
         var resourceDefinition = createResourceDefinition(resourceDefinitionId, location,
-                storageClass, transferProcessId);
+                storageClass, transferProcessId, projectId);
         var bucketName = resourceDefinition.getId();
         var bucketLocation = resourceDefinition.getLocation();
 
@@ -164,6 +168,7 @@ class GcsProvisionerTest {
                 .bucketName("bucket")
                 .location("location")
                 .storageClass("standard")
+                .projectId("projectId")
                 .transferProcessId("transfer-id")
                 .serviceAccountName(serviceAccountName)
                 .serviceAccountEmail(serviceAccountEmail)
@@ -172,13 +177,15 @@ class GcsProvisionerTest {
 
     private GcsResourceDefinition createResourceDefinition() {
         return createResourceDefinition("id", "location",
-                "storage-class", "transfer-id");
+                "storage-class", "transfer-id", "projectId1");
     }
 
-    private GcsResourceDefinition createResourceDefinition(String id, String location, String storageClass, String transferProcessId) {
+    private GcsResourceDefinition createResourceDefinition(String id, String location, String storageClass, String transferProcessId, String projectId) {
         return GcsResourceDefinition.Builder.newInstance().id(id)
                 .location(location).storageClass(storageClass)
-                .transferProcessId(transferProcessId).build();
+                .transferProcessId(transferProcessId)
+                .dataAddress(DataAddress.Builder.newInstance().type(GcsStoreSchema.TYPE).build())
+                .projectId(projectId).build();
     }
 
     @Test

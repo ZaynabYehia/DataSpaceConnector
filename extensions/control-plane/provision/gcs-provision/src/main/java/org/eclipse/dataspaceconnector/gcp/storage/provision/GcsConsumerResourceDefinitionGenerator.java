@@ -34,9 +34,14 @@ public class GcsConsumerResourceDefinitionGenerator implements ConsumerResourceD
         var destination = dataRequest.getDataDestination();
         var id = randomUUID().toString();
         var location = destination.getProperty(GcsStoreSchema.LOCATION);
+        var projectId = destination.getProperty(GcsStoreSchema.PROJECT_ID);
         var storageClass = destination.getProperty(GcsStoreSchema.STORAGE_CLASS);
 
-        return GcsResourceDefinition.Builder.newInstance().id(id).location(location)
+        return GcsResourceDefinition.Builder.newInstance()
+                .id(id)
+                .location(location)
+                .projectId(projectId)
+                .dataAddress(destination)
                 .storageClass(storageClass).build();
     }
 }

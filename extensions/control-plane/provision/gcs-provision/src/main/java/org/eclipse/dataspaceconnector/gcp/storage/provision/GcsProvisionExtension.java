@@ -16,20 +16,20 @@ package org.eclipse.dataspaceconnector.gcp.storage.provision;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
 import org.eclipse.dataspaceconnector.gcp.core.iam.IamServiceImpl;
 import org.eclipse.dataspaceconnector.gcp.core.storage.StorageServiceImpl;
 import org.eclipse.dataspaceconnector.runtime.metamodel.annotation.Inject;
 import org.eclipse.dataspaceconnector.runtime.metamodel.annotation.Setting;
+import org.eclipse.dataspaceconnector.spi.security.Vault;
 import org.eclipse.dataspaceconnector.spi.system.ServiceExtension;
 import org.eclipse.dataspaceconnector.spi.system.ServiceExtensionContext;
 import org.eclipse.dataspaceconnector.spi.transfer.provision.ProvisionManager;
 import org.eclipse.dataspaceconnector.spi.transfer.provision.ResourceManifestGenerator;
+import org.eclipse.dataspaceconnector.spi.types.TypeManager;
 
 
 public class GcsProvisionExtension implements ServiceExtension {
-
-    @Setting(value = "The GCP project ID", required = true)
-    private static final String GCP_PROJECT_ID = "edc.gcp.project.id";
 
     @Inject
     private ProvisionManager provisionManager;
@@ -42,29 +42,22 @@ public class GcsProvisionExtension implements ServiceExtension {
         return "GCP storage provisioner";
     }
 
+    @Inject
+    private Vault vault;
+
+    @Inject
+    private TypeManager typeManager;
     @Override
     public void initialize(ServiceExtensionContext context) {
         var monitor = context.getMonitor();
+        var gcpCredential = new GcpCredential(vault, typeManager, monitor);
 
-        var projectId = context.getConfig().getString(GCP_PROJECT_ID);
-        var storageClient = createDefaultStorageClient(projectId);
-        var storageService = new StorageServiceImpl(storageClient, monitor);
-        var iamService = IamServiceImpl.Builder.newInstance(monitor, projectId).build();
-
-        var provisioner = new GcsProvisioner(monitor, storageService, iamService);
+        var provisioner = new GcsProvisioner(monitor, gcpCredential);
         provisionManager.register(provisioner);
 
         manifestGenerator.registerGenerator(new GcsConsumerResourceDefinitionGenerator());
     }
 
 
-    /**
-     * Creates {@link Storage} for the specified project using application default credentials
-     *
-     * @param projectId The project that should be used for storage operations
-     * @return {@link Storage}
-     */
-    private Storage createDefaultStorageClient(String projectId) {
-        return StorageOptions.newBuilder().setProjectId(projectId).build().getService();
-    }
+
 }

@@ -14,6 +14,7 @@
 
 package org.eclipse.dataspaceconnector.gcp.storage.provision;
 
+import org.eclipse.dataspaceconnector.spi.types.domain.DataAddress;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.ResourceDefinition;
 
 import java.util.Objects;
@@ -21,8 +22,10 @@ import java.util.Objects;
 public class GcsResourceDefinition extends ResourceDefinition {
 
     private String location;
+    private String projectId;
     private String storageClass;
 
+    private DataAddress dataAddress;
     private GcsResourceDefinition() {
     }
 
@@ -30,8 +33,16 @@ public class GcsResourceDefinition extends ResourceDefinition {
         return this.location;
     }
 
+    public String getProjectId() {
+        return this.projectId;
+    }
+
     public String getStorageClass() {
         return this.storageClass;
+    }
+
+    public DataAddress getDataAddress() {
+        return dataAddress;
     }
 
     @Override
@@ -56,6 +67,16 @@ public class GcsResourceDefinition extends ResourceDefinition {
             return this;
         }
 
+        public Builder projectId(String projectId) {
+            resourceDefinition.projectId = projectId;
+            return this;
+        }
+
+        public Builder dataAddress(DataAddress dataAddress) {
+            resourceDefinition.dataAddress = dataAddress;
+            return this;
+        }
+
         public Builder storageClass(String storageClass) {
             resourceDefinition.storageClass = storageClass;
             return this;
@@ -66,6 +87,7 @@ public class GcsResourceDefinition extends ResourceDefinition {
             super.verify();
             Objects.requireNonNull(resourceDefinition.location, "location");
             Objects.requireNonNull(resourceDefinition.storageClass, "storageClass");
+            Objects.requireNonNull(resourceDefinition.projectId, "projectId");
         }
     }
 }
