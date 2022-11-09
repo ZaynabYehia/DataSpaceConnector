@@ -19,12 +19,7 @@ public class GcsStoreSchema {
 
     public static final String BUCKET_NAME = "bucket_name";
     public static final String SERVICE_ACCOUNT_KEY_NAME = "service_account_key_name";
-
     public static final String SERVICE_ACCOUNT_VALUE = "service_account_value";
-
-    public static final String ACCESS_TOKEN_KEY_NAME = "access_token_key_name";
-
-    public static final String ACCESS_TOKEN_VALUE = "access_token_value";
     public static final String LOCATION = "location";
     public static final String PROJECT_ID = "project_id";
     public static final String STORAGE_CLASS = "storage_class";

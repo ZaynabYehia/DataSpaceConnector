@@ -14,6 +14,7 @@
 
 package org.eclipse.dataspaceconnector.gcp.dataplane.storage;
 
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredentials;
 import org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema;
 import org.eclipse.dataspaceconnector.spi.monitor.Monitor;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class GcsDataSourceFactoryTest {
     Monitor monitor = mock(Monitor.class);
 
     private final GcsDataSourceFactory factory =
-            new GcsDataSourceFactory(monitor);
+            new GcsDataSourceFactory(monitor, mock(GcpCredentials.class));
 
     @Test
     void canHandle_returnsTrueWhenExpectedType() {

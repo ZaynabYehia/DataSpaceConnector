@@ -26,6 +26,7 @@ public class GcsResourceDefinition extends ResourceDefinition {
     private String storageClass;
 
     private DataAddress dataAddress;
+
     private GcsResourceDefinition() {
     }
 

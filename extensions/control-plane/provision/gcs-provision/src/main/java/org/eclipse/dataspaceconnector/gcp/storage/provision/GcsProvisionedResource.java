@@ -18,11 +18,16 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema;
 import org.eclipse.dataspaceconnector.spi.types.domain.DataAddress;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.ProvisionedDataDestinationResource;
 
-import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.*;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.BUCKET_NAME;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.LOCATION;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.PROJECT_ID;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.SERVICE_ACCOUNT_EMAIL;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.SERVICE_ACCOUNT_NAME;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.STORAGE_CLASS;
+import static org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema.TYPE;
 
 @JsonDeserialize(builder = GcsProvisionedResource.Builder.class)
 @JsonTypeName("dataspaceconnector:gcsgrovisionedresource")
@@ -38,6 +43,7 @@ public class GcsProvisionedResource extends ProvisionedDataDestinationResource {
     public String getProjectId() {
         return getDataAddress().getProperty(PROJECT_ID);
     }
+
     public String getStorageClass() {
         return getDataAddress().getProperty(STORAGE_CLASS);
     }
@@ -58,7 +64,7 @@ public class GcsProvisionedResource extends ProvisionedDataDestinationResource {
 
         private Builder() {
             super(new GcsProvisionedResource());
-            dataAddressBuilder = DataAddress.Builder.newInstance().type(GcsStoreSchema.TYPE);
+            dataAddressBuilder = DataAddress.Builder.newInstance().type(TYPE);
         }
 
         @JsonCreator

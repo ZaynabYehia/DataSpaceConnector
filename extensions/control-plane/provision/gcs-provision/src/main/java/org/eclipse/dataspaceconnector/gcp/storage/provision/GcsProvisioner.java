@@ -14,37 +14,45 @@
 
 package org.eclipse.dataspaceconnector.gcp.storage.provision;
 
+import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.iam.admin.v1.IAMClient;
+import com.google.cloud.iam.admin.v1.IAMSettings;
+import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
+import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
+import com.google.cloud.iam.credentials.v1.stub.IamCredentialsStubSettings;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredentials;
 import org.eclipse.dataspaceconnector.gcp.core.common.GcpException;
 import org.eclipse.dataspaceconnector.gcp.core.common.GcpServiceAccount;
 import org.eclipse.dataspaceconnector.gcp.core.iam.IamService;
 import org.eclipse.dataspaceconnector.gcp.core.iam.IamServiceImpl;
+import org.eclipse.dataspaceconnector.gcp.core.storage.StorageService;
 import org.eclipse.dataspaceconnector.gcp.core.storage.StorageServiceImpl;
 import org.eclipse.dataspaceconnector.policy.model.Policy;
 import org.eclipse.dataspaceconnector.spi.monitor.Monitor;
 import org.eclipse.dataspaceconnector.spi.response.ResponseStatus;
 import org.eclipse.dataspaceconnector.spi.response.StatusResult;
 import org.eclipse.dataspaceconnector.spi.transfer.provision.Provisioner;
-import org.eclipse.dataspaceconnector.spi.types.domain.DataAddress;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.DeprovisionedResource;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.ProvisionResponse;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.ProvisionedResource;
 import org.eclipse.dataspaceconnector.spi.types.domain.transfer.ResourceDefinition;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public class GcsProvisioner implements Provisioner<GcsResourceDefinition, GcsProvisionedResource> {
 
     private final Monitor monitor;
-    private GcpCredential gcpCredential;
+    private final GcpCredentials gcpCredential;
 
-    public GcsProvisioner(Monitor monitor, GcpCredential gcpCredential) {
+    public GcsProvisioner(Monitor monitor, GcpCredentials gcpCredential) {
         this.monitor = monitor;
         this.gcpCredential = gcpCredential;
     }
@@ -62,26 +70,36 @@ public class GcsProvisioner implements Provisioner<GcsResourceDefinition, GcsPro
     @Override
     public CompletableFuture<StatusResult<ProvisionResponse>> provision(
             GcsResourceDefinition resourceDefinition, Policy policy) {
-        var bucketName = resourceDefinition.getId();
-        var bucketLocation = resourceDefinition.getLocation();
+
         var projectId = resourceDefinition.getProjectId();
         var dataAddress = resourceDefinition.getDataAddress();
+        var googleCredentials = gcpCredential.resolveGoogleCredentialsFromDataAddress(dataAddress);
 
+        var iamService = createIamService(monitor,
+                projectId, googleCredentials);
+
+        var storageClient = createStorageClient(googleCredentials);
+        var storageService = new StorageServiceImpl(storageClient, monitor);
+        return provision(resourceDefinition, policy, iamService, storageService);
+    }
+
+    public CompletableFuture<StatusResult<ProvisionResponse>> provision(
+            GcsResourceDefinition resourceDefinition, Policy policy,
+             IamService iamService, StorageService storageService) {
+        var bucketName = resourceDefinition.getId();
+        var bucketLocation = resourceDefinition.getLocation();
 
         monitor.debug("GCS Bucket request submitted: " + bucketName);
 
         var resourceName = resourceDefinition.getId() + "-bucket";
         var processId = resourceDefinition.getTransferProcessId();
         try {
-            var googleCredentials = gcpCredential.resolveGoogleCredential(dataAddress);
-            var storageClient = createDefaultStorageClient(googleCredentials);
-            var storageService = new StorageServiceImpl(storageClient, monitor);
             var bucket = storageService.getOrCreateEmptyBucket(bucketName, bucketLocation);
             if (!storageService.isEmpty(bucketName)) {
                 return completedFuture(StatusResult.failure(ResponseStatus.FATAL_ERROR, String.format("Bucket: %s already exists and is not empty.", bucketName)));
             }
-            var iamService = IamServiceImpl.Builder.newInstance(monitor, projectId, googleCredentials).build();
-            var serviceAccount = createServiceAccount(processId, bucketName, projectId, iamService);
+
+            var serviceAccount = createServiceAccount(processId, bucketName, iamService);
             storageService.addProviderPermissions(bucket, serviceAccount);
             var token = iamService.createAccessToken(serviceAccount);
 
@@ -94,12 +112,50 @@ public class GcsProvisioner implements Provisioner<GcsResourceDefinition, GcsPro
         }
     }
 
+    /**
+     * Supplier of {@link IAMClient} using application default credentials
+     */
+    private Supplier<IAMClient> getIamClientSupplier(GoogleCredentials googleCredentials) {
+        return () -> {
+            try {
+                var iamSetting = IAMSettings.newBuilder()
+                        .setCredentialsProvider(FixedCredentialsProvider.create(googleCredentials))
+                        .build();
+                return IAMClient.create(iamSetting);
+            } catch (IOException e) {
+                throw new GcpException("Error while creating IAMClient", e);
+            }
+        };
+    }
+
+    /**
+     * Supplier of {@link IamCredentialsClient} using application default credentials
+     */
+    private Supplier<IamCredentialsClient> getIamCredentialsClientSupplier(GoogleCredentials googleCredentials) {
+
+        return () -> {
+            try {
+                var iamCredentialsStubSettings = IamCredentialsStubSettings.newBuilder()
+                        .setCredentialsProvider(FixedCredentialsProvider.create(googleCredentials))
+                        .build();
+                return IamCredentialsClient.create(IamCredentialsSettings.create(iamCredentialsStubSettings));
+            } catch (IOException e) {
+                throw new GcpException("Error while creating IamCredentialsClient", e);
+            }
+        };
+    }
+
+
     @Override
     public CompletableFuture<StatusResult<DeprovisionedResource>> deprovision(
             GcsProvisionedResource provisionedResource, Policy policy) {
+        var googleCredentials = gcpCredential.resolveGoogleCredentialsFromDataAddress(provisionedResource.getDataAddress());
+        var iamService = createIamService(monitor, provisionedResource.getProjectId(), googleCredentials);
+        return deprovision(provisionedResource, iamService);
+    }
+
+    public CompletableFuture<StatusResult<DeprovisionedResource>> deprovision(GcsProvisionedResource provisionedResource, IamService iamService) {
         try {
-            var googleCredentials = gcpCredential.resolveGoogleCredential(provisionedResource.getDataAddress());
-            var iamService = IamServiceImpl.Builder.newInstance(monitor, provisionedResource.getProjectId(), googleCredentials).build();
             iamService.deleteServiceAccountIfExists(
                     new GcpServiceAccount(provisionedResource.getServiceAccountEmail(),
                             provisionedResource.getServiceAccountName(), ""));
@@ -110,9 +166,10 @@ public class GcsProvisioner implements Provisioner<GcsResourceDefinition, GcsPro
         return CompletableFuture.completedFuture(StatusResult.success(
                 DeprovisionedResource.Builder.newInstance()
                         .provisionedResourceId(provisionedResource.getId()).build()));
+
     }
 
-    private GcpServiceAccount createServiceAccount(String processId, String buckedName, String projectId, IamService iamService) {
+    private GcpServiceAccount createServiceAccount(String processId, String buckedName, IamService iamService) {
         var serviceAccountName = sanitizeServiceAccountName(processId);
         var uniqueServiceAccountDescription = generateUniqueServiceAccountDescription(processId, buckedName);
         return iamService.getOrCreateServiceAccount(serviceAccountName, uniqueServiceAccountDescription);
@@ -150,15 +207,18 @@ public class GcsProvisioner implements Provisioner<GcsResourceDefinition, GcsPro
     /**
      * Creates {@link Storage} for the specified project using application default credentials
      *
-     * @param googleCredentials
+     * @param googleCredentials Google credentials
      * @return {@link Storage}
      */
-    private Storage createDefaultStorageClient(GoogleCredentials googleCredentials) {
+    private Storage createStorageClient(GoogleCredentials googleCredentials) {
         return StorageOptions.newBuilder()
                 .setCredentials(googleCredentials).build().getService();
     }
 
     private IamService createIamService(Monitor monitor, String projectId, GoogleCredentials googleCredentials) {
-        return  IamServiceImpl.Builder.newInstance(monitor, projectId, googleCredentials).build();
+        return IamServiceImpl.Builder.newInstance(monitor, projectId)
+                .iamClientSupplier(getIamClientSupplier(googleCredentials))
+                .iamCredentialsClientSupplier(getIamCredentialsClientSupplier(googleCredentials))
+                .build();
     }
 }

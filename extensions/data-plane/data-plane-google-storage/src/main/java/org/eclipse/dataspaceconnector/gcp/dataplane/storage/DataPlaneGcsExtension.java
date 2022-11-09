@@ -16,7 +16,7 @@ package org.eclipse.dataspaceconnector.gcp.dataplane.storage;
 
 import org.eclipse.dataspaceconnector.dataplane.spi.pipeline.DataTransferExecutorServiceContainer;
 import org.eclipse.dataspaceconnector.dataplane.spi.pipeline.PipelineService;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredentials;
 import org.eclipse.dataspaceconnector.runtime.metamodel.annotation.Extension;
 import org.eclipse.dataspaceconnector.runtime.metamodel.annotation.Inject;
 import org.eclipse.dataspaceconnector.spi.security.Vault;
@@ -50,7 +50,7 @@ public class DataPlaneGcsExtension implements ServiceExtension {
     public void initialize(ServiceExtensionContext context) {
 
         var monitor = context.getMonitor();
-        var gcpCredential = new GcpCredential(vault, typeManager, monitor);
+        var gcpCredential = new GcpCredentials(vault, typeManager, monitor);
 
 
         var sourceFactory = new GcsDataSourceFactory(monitor, gcpCredential);

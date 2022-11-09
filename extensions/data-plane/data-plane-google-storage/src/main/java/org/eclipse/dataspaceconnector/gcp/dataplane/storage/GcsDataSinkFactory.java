@@ -20,7 +20,7 @@ import com.google.cloud.storage.StorageOptions;
 import org.eclipse.dataspaceconnector.dataplane.common.validation.ValidationRule;
 import org.eclipse.dataspaceconnector.dataplane.spi.pipeline.DataSink;
 import org.eclipse.dataspaceconnector.dataplane.spi.pipeline.DataSinkFactory;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredentials;
 import org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema;
 import org.eclipse.dataspaceconnector.gcp.dataplane.storage.validation.GcsSinkDataAddressValidationRule;
 import org.eclipse.dataspaceconnector.spi.EdcException;
@@ -39,16 +39,12 @@ public class GcsDataSinkFactory implements DataSinkFactory {
     private final ValidationRule<DataAddress> validation = new GcsSinkDataAddressValidationRule();
     private final ExecutorService executorService;
     private final Monitor monitor;
-    private final Vault vault;
-    private final TypeManager typeManager;
 
-    private final GcpCredential gcpCredential;
+    private final GcpCredentials gcpCredential;
 
-    public GcsDataSinkFactory(ExecutorService executorService, Monitor monitor, Vault vault, TypeManager typeManager, GcpCredential gcpCredential) {
+    public GcsDataSinkFactory(ExecutorService executorService, Monitor monitor, Vault vault, TypeManager typeManager, GcpCredentials gcpCredential) {
         this.executorService = executorService;
         this.monitor = monitor;
-        this.vault = vault;
-        this.typeManager = typeManager;
         this.gcpCredential = gcpCredential;
     }
 
@@ -69,7 +65,8 @@ public class GcsDataSinkFactory implements DataSinkFactory {
         if (validationResult.failed()) {
             throw new EdcException(String.join(", ", validationResult.getFailureMessages()));
         }
-        var googleCredentials = gcpCredential.resolveGoogleCredential(request.getDestinationDataAddress());
+        var googleCredentials = gcpCredential.resolveGoogleCredentialsFromDataAddress(request.getDestinationDataAddress());
+
         var destination = request.getDestinationDataAddress();
 
         var storageClient = StorageOptions.newBuilder()

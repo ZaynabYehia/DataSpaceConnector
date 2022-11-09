@@ -14,31 +14,21 @@
 
 package org.eclipse.dataspaceconnector.gcp.core.iam;
 
-import com.google.api.gax.core.FixedCredentialsProvider;
-import com.google.api.gax.core.GoogleCredentialsProvider;
-import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.rpc.ApiException;
 import com.google.api.gax.rpc.StatusCode;
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.iam.admin.v1.IAMClient;
-import com.google.cloud.iam.admin.v1.IAMSettings;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
-import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
 import com.google.cloud.iam.credentials.v1.ServiceAccountName;
-import com.google.cloud.iam.credentials.v1.stub.IamCredentialsStubSettings;
 import com.google.common.collect.ImmutableList;
 import com.google.iam.admin.v1.CreateServiceAccountRequest;
 import com.google.iam.admin.v1.ProjectName;
 import com.google.iam.admin.v1.ServiceAccount;
 import com.google.protobuf.Duration;
-import org.apache.http.client.CredentialsProvider;
 import org.eclipse.dataspaceconnector.gcp.core.common.GcpAccessToken;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
 import org.eclipse.dataspaceconnector.gcp.core.common.GcpException;
 import org.eclipse.dataspaceconnector.gcp.core.common.GcpServiceAccount;
 import org.eclipse.dataspaceconnector.spi.monitor.Monitor;
-import org.eclipse.dataspaceconnector.spi.types.domain.DataAddress;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -145,18 +135,16 @@ public class IamServiceImpl implements IamService {
     public static class Builder {
         private final String gcpProjectId;
         private final Monitor monitor;
-        private final GoogleCredentials googleCredentials;
         private Supplier<IAMClient> iamClientSupplier;
         private Supplier<IamCredentialsClient> iamCredentialsClientSupplier;
 
-        private Builder(Monitor monitor, String gcpProjectId, GoogleCredentials googleCredentials) {
+        private Builder(Monitor monitor, String gcpProjectId) {
             this.gcpProjectId = gcpProjectId;
             this.monitor = monitor;
-            this.googleCredentials = googleCredentials;
         }
 
-       public static IamServiceImpl.Builder newInstance(Monitor monitor, String gcpProjectId, GoogleCredentials googleCredentials) {
-            return new Builder(monitor, gcpProjectId, googleCredentials);
+        public static IamServiceImpl.Builder newInstance(Monitor monitor, String gcpProjectId) {
+            return new Builder(monitor, gcpProjectId);
         }
 
         public Builder iamClientSupplier(Supplier<IAMClient> iamClientSupplier) {
@@ -172,7 +160,7 @@ public class IamServiceImpl implements IamService {
         public IamServiceImpl build() {
             Objects.requireNonNull(gcpProjectId, "gcpProjectId");
             Objects.requireNonNull(monitor, "monitor");
-            Objects.requireNonNull(googleCredentials, "googleCredentials");
+
             if (iamClientSupplier == null) {
                 iamClientSupplier = defaultIamClientSupplier();
             }
@@ -188,10 +176,7 @@ public class IamServiceImpl implements IamService {
         private Supplier<IAMClient> defaultIamClientSupplier() {
             return () -> {
                 try {
-                    var iamSetting = IAMSettings.newBuilder()
-                            .setCredentialsProvider(FixedCredentialsProvider.create(googleCredentials))
-                            .build();
-                    return IAMClient.create(iamSetting);
+                    return IAMClient.create();
                 } catch (IOException e) {
                     throw new GcpException("Error while creating IAMClient", e);
                 }
@@ -205,10 +190,7 @@ public class IamServiceImpl implements IamService {
 
             return () -> {
                 try {
-                    var iamCredentialsStubSettings = IamCredentialsStubSettings.newBuilder()
-                            .setCredentialsProvider(FixedCredentialsProvider.create(googleCredentials))
-                            .build();
-                    return IamCredentialsClient.create(IamCredentialsSettings.create(iamCredentialsStubSettings));
+                    return IamCredentialsClient.create();
                 } catch (IOException e) {
                     throw new GcpException("Error while creating IamCredentialsClient", e);
                 }

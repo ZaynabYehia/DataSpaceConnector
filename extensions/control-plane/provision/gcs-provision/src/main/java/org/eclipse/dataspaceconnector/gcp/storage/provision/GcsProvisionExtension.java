@@ -14,13 +14,8 @@
 
 package org.eclipse.dataspaceconnector.gcp.storage.provision;
 
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
-import org.eclipse.dataspaceconnector.gcp.core.iam.IamServiceImpl;
-import org.eclipse.dataspaceconnector.gcp.core.storage.StorageServiceImpl;
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredentials;
 import org.eclipse.dataspaceconnector.runtime.metamodel.annotation.Inject;
-import org.eclipse.dataspaceconnector.runtime.metamodel.annotation.Setting;
 import org.eclipse.dataspaceconnector.spi.security.Vault;
 import org.eclipse.dataspaceconnector.spi.system.ServiceExtension;
 import org.eclipse.dataspaceconnector.spi.system.ServiceExtensionContext;
@@ -47,10 +42,11 @@ public class GcsProvisionExtension implements ServiceExtension {
 
     @Inject
     private TypeManager typeManager;
+
     @Override
     public void initialize(ServiceExtensionContext context) {
         var monitor = context.getMonitor();
-        var gcpCredential = new GcpCredential(vault, typeManager, monitor);
+        var gcpCredential = new GcpCredentials(vault, typeManager, monitor);
 
         var provisioner = new GcsProvisioner(monitor, gcpCredential);
         provisionManager.register(provisioner);

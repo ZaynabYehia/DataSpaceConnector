@@ -18,7 +18,7 @@ import com.google.cloud.storage.StorageOptions;
 import org.eclipse.dataspaceconnector.dataplane.common.validation.ValidationRule;
 import org.eclipse.dataspaceconnector.dataplane.spi.pipeline.DataSource;
 import org.eclipse.dataspaceconnector.dataplane.spi.pipeline.DataSourceFactory;
-import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredential;
+import org.eclipse.dataspaceconnector.gcp.core.common.GcpCredentials;
 import org.eclipse.dataspaceconnector.gcp.core.storage.GcsStoreSchema;
 import org.eclipse.dataspaceconnector.gcp.dataplane.storage.validation.GcsSourceDataAddressValidationRule;
 import org.eclipse.dataspaceconnector.spi.EdcException;
@@ -33,9 +33,9 @@ public class GcsDataSourceFactory implements DataSourceFactory {
     private final ValidationRule<DataAddress> validation = new GcsSourceDataAddressValidationRule();
     private final Monitor monitor;
 
-    private final GcpCredential gcpCredential;
+    private final GcpCredentials gcpCredential;
 
-    public GcsDataSourceFactory(Monitor monitor, GcpCredential gcpCredential) {
+    public GcsDataSourceFactory(Monitor monitor, GcpCredentials gcpCredential) {
         this.monitor = monitor;
         this.gcpCredential = gcpCredential;
     }
@@ -59,7 +59,7 @@ public class GcsDataSourceFactory implements DataSourceFactory {
             throw new EdcException(String.join(", ", validationResult.getFailureMessages()));
         }
 
-        var googleCredentials = gcpCredential.resolveGoogleCredential(request.getSourceDataAddress());
+        var googleCredentials = gcpCredential.resolveGoogleCredentialsFromDataAddress(request.getSourceDataAddress());
         var storageClient = StorageOptions.newBuilder()
                 .setCredentials(googleCredentials)
                 .build().getService();
